@@ -43,7 +43,7 @@ def ooc_cmd_bg(client, arg):
     if not client.is_mod and client.area.bg_lock == "true":
         raise AreaError("This area's background is locked")
     try:
-        if client.is_mod or client.is_gm:
+        if client.is_mod:
             client.area.change_background_mod(arg)
         else:
             client.area.change_background(arg)
