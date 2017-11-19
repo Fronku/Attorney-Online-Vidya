@@ -85,7 +85,6 @@ class ClientManager:
             if not name_ws or name_ws.isdigit():
                 return False
             for client in self.server.client_manager.clients:
-                print(client.name == name)
                 if client.name == name:
                     return False
             return True
@@ -137,9 +136,13 @@ class ClientManager:
 
         def change_area(self, area):
             if self.area == area:
-                raise ClientError('User already in specified area.')
-            if area.is_locked and not self.is_mod and not self.ipid in self.area.invite_list:
-                raise ClientError("That area is locked!")
+                raise ClientError('User is already in target area.')
+            if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                raise ClientError('That area is locked!')
+            if area.is_gmlocked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                raise ClientError('That area is locked!')
+            if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
+                raise ClientError('That area is locked!')
             old_area = self.area
             if not area.is_char_available(self.char_id):
                 try:
@@ -158,6 +161,9 @@ class ClientManager:
             logger.log_server(
                 '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
                                                                    self.area.name, self.area.id), self)
+            #logger.log_rp(
+            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+            #                                                       self.area.name, self.area.id), self)
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
