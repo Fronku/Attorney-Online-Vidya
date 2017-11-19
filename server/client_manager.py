@@ -44,6 +44,7 @@ class ClientManager:
             self.is_cm = False
             self.evi_list = []
             self.disemvowel = False
+            self.gimp = False
             self.muted_global = False
             self.muted_adverts = False
             self.is_muted = False
@@ -289,6 +290,49 @@ class ClientManager:
             message = re.sub("[aeiou]", "", message, flags=re.IGNORECASE)
             return re.sub(r"\s+", " ", message)
 
+        # noinspection PyMethodMayBeStatic
+        def gimp_message(self, message):
+            message = ['ERP IS BAN',
+                       'I\'m fucking gimped because I\'m both autistic and a retard!',
+                       'HELP ME',
+                       'Boy, I sure do love Anongrill, the best admin, and the cutest!!!!!',
+                       'Bro is the broiest bro of the bro\'s that bro bro bro bro.',
+                       'GOD DAMN IT LD WE LOST THE FUCKING CUP AGAIN',
+                       'WHAT THE FUCK DOES NAMU EVEN DO',
+                       'I\'M SEVERELY AUTISTIC!!!!',
+                       '[PEES FREELY]',
+                       'KILL ME',
+                       'I found this place on reddit XD',
+                       'how do i redtext?',
+                       '(((((case????)))))',
+                       'Anyone else a fan of MLP?',
+                       'does this server have sans from undertale?',
+                       'what does call mod do',
+                       'I\'M PICKLE RIIIIIIIIIIICK',
+                       'does anyone have a miiverse account?',
+                       'Drop me a PM if you want to ERP',
+                       'Join my discord server please',
+                       'Add me on steam t. Syntere',
+                       'Civ V when?',
+                       'can I have mod pls?',
+                       'why is everyone a missingo?',
+                       'how 2 change areas?',
+                       'Haha I wonder what Maya\'s feet smell like, just wondering, haha, just as a joke you know? Haha',
+                       'Guys how do I win a case?',
+                       'My win loss ratio as prosecutor is 12:6',
+                       'why, my peanus weenus of course :) hahah! it\'s my weeeeeenus peanus! hahah :)',
+                       'raymond shiled is the mastermind of AAI2',
+                       'does anyone want to check out my tumblr? :3',
+                       '19 years of perfection, i don\'t play games to fucking lose',
+                       'nah... your taunts are fucking useless... only defeat angers me... by trying to taunt just earns you my pitty',
+                       'When do we remove dangits',
+                       'MODS STOP GIMPING ME',
+                       'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
+                       'Come back, lewdton.',
+                       'Chiaki is my waifu!',
+                       'PLAY NORMIES PLS']
+            return random.choice(message)
+
     def __init__(self, server):
         self.clients = set()
         self.server = server
@@ -325,7 +369,7 @@ class ClientManager:
         for area in areas:
             for client in area.clients:
                 if key == TargetType.IP:
-                    if value.lower().startswith(client.get_ip().lower()):
+                    if value.lower().startswith(client.get_ipreal().lower()):
                         targets.append(client)
                 elif key == TargetType.OOC_NAME:
                     if value.lower().startswith(client.name.lower()) and client.name:

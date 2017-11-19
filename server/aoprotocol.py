@@ -327,7 +327,7 @@ class AOProtocol(asyncio.Protocol):
         if button not in (0, 1, 2, 3, 4):
             return
         if evidence < 0:
-        	return
+            return
         if ding not in (0, 1):
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
@@ -347,7 +347,9 @@ class AOProtocol(asyncio.Protocol):
             if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
         msg = text[:256]
-        if self.client.disemvowel:
+        if self.client.gimp: #If you're gimped, gimp message.
+            msg = self.client.gimp_message(msg)
+        if self.client.disemvowel: #If you're disemvoweled, replace string.
             msg = self.client.disemvowel_message(msg)
         self.client.pos = pos
         if evidence:
@@ -359,8 +361,8 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
 
-        if (self.client.area.is_recording):
-        	self.client.area.recorded_messages.append(args)
+        if self.client.area.is_recording:
+            self.client.area.recorded_messages.append(args)
 
     def net_cmd_ct(self, args):
         """ OOC Message

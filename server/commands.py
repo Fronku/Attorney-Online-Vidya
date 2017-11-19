@@ -682,6 +682,26 @@ def ooc_cmd_undisemvowel(client, arg):
     else:
         client.send_host_message('No targets found.')
 
+def ooc_cmd_gimp(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /gimp <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Gimping {}.'.format(c.get_ip(), client))
+            c.gimp = True
+        client.send_host_message('Gimped {} targets.'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
+
 def ooc_cmd_blockdj(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
