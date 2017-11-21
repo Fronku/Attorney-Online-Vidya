@@ -54,10 +54,12 @@ class TsuServer3:
         self.music_list_ao2 = None
         self.music_pages_ao1 = None
         self.backgrounds = None
+        self.data = None
         self.load_characters()
         self.load_music()
         self.load_backgrounds()
         self.load_ids()
+        self.load_data()
         self.district_client = None
         self.ms_client = None
         self.rp_mode = False
@@ -146,6 +148,10 @@ class TsuServer3:
                 self.hdid_list = json.loads(whole_list.read())
         except:
             logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json is exist then remove it.')
+
+    def load_data(self):
+        with open('config/data.yaml', 'r') as data:
+            self.data = yaml.load(data)
            
     def dump_ipids(self):
         with open('storage/ip_ids.json', 'w') as whole_list:

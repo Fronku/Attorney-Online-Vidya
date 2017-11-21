@@ -435,7 +435,7 @@ def ooc_cmd_pm(client, arg):
                 target_clients += c
     if not target_clients:
         try:
-            target_clients = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, namedrop, True)
+            target_clients = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, namedrop, False)
         except Exception as n:
             client.send_host_message('{}'.format(n))
     if not target_clients:
@@ -748,7 +748,6 @@ def ooc_cmd_unblockdj(client, arg):
 
 def ooc_cmd_vote(client, arg):
     if len(arg) == 0:
-        print("a")
         polls = client.server.serverpoll_manager.show_poll_list()
         if not polls:
             client.send_host_message('There are currently no polls to vote for. Have a nice day, and God bless.')
@@ -789,9 +788,37 @@ def ooc_cmd_pollremove(client, arg):
     else:
         return
 
+def ooc_cmd_addpolldetail(client, arg):
+    if client.is_mod:
+        if len(arg) == 0:
+            client.send_host_message('Command must have an argument!')
+        else:
+            args = arg.split()
+            poll = 1
+            for word in args:
+                if word.lower().endswith(':'):
+                    break
+                else:
+                    poll += 1
+            if poll == len(args):
+                raise ArgumentError(
+                    'Invalid syntax. Add \':\' in the end of pollname. \n \'/addpolldetail <poll name>: <detail>\'')
+            poll_name = ' '.join(args[:poll])
+            poll_name = poll_name[:len(poll_name) - 1]
+            detail = ' '.join(args[poll:])
+            if not detail:
+                raise ArgumentError('Invalid syntax. Expected message after \':\'. \n \'/addpolldetail <poll name>: <detail>\'')
+            x = client.server.serverpoll_manager.polldetail(poll_name, detail)
+            if x == 1:
+                client.send_host_message('Added "{}" as details in poll "{}"'.format(detail, poll_name))
+            else:
+                client.send_host_message('Poll does not exist!')
+    else:
+        return
+
 def ooc_cmd_kms(client, arg):
-    ip = client.get_ip()
-    targets = client.server.client_manager.get_targets_by_ip(ip)
+    hdid = client.hdid
+    targets = client.server.client_manager.get_targets(client, TargetType.HDID, hdid, False)
     for target in targets:
         if target != client:
             target.disconnect()
@@ -806,7 +833,7 @@ def ooc_cmd_setupdate(client, arg):
 def ooc_cmd_update(client, arg):
     try:
         client.send_host_message('Latest Update: {}'.format(client.server.data['update']))
-    except ServerError:
+    except ServerErrorr:
         client.send_host_message('Update not set!')
 
 def ooc_cmd_setthread(client, arg):
@@ -815,9 +842,8 @@ def ooc_cmd_setthread(client, arg):
         client.server.save_data()
         client.send_host_message('Thread set!')
 
-
-def ooc_cmd_update(client, arg):
+def ooc_cmd_thread(client, arg):
     try:
-        client.send_host_message('Curent Thread: {}'.format(client.server.data['update']))
-    except ServerError:
-        client.send_host_message('Update not set!')
+        client.send_host_message('Curent Thread: {}'.format(client.server.data['thread']))
+    except Exception as n:
+        client.send_host_message(n)

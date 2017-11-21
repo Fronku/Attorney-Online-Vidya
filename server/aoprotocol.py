@@ -374,6 +374,9 @@ class AOProtocol(asyncio.Protocol):
             return
         if self.client.name == '' or self.client.name != args[0]:
             self.client.name = args[0]
+        if self.client.name.isdigit():
+            self.client.send_host_message('Digit only names is not allowed.')
+            return
         if self.client.name.startswith(self.server.config['hostname']) or self.client.name.startswith('<dollar>G'):
             self.client.send_host_message('That name is reserved!')
             return
