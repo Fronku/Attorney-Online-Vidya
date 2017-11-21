@@ -99,8 +99,6 @@ class ServerpollManager:
 
     def polldetail(self, value, detail):
         for i in self.poll_list:
-            print(i)
-            print(value)
             if i[0].lower() == value.lower():
                 stream = open('storage/poll/{} \'{}\'.yaml'.format(i[1], i[0]), 'r')
                 hold = yaml.load(stream)
