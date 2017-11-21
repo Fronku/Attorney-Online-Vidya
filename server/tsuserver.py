@@ -29,6 +29,7 @@ from server.client_manager import ClientManager
 from server.districtclient import DistrictClient
 from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
+from server.serverpoll_manager import ServerpollManager
 
 class TsuServer3:
     def __init__(self):
@@ -38,6 +39,7 @@ class TsuServer3:
         self.load_iniswaps()
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
+        self.serverpoll_manager = ServerpollManager(self)
         self.ban_manager = BanManager()
         self.software = 'tsuserver3'
         self.version = 'tsuserver3dev'

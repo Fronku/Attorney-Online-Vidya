@@ -53,6 +53,8 @@ class ClientManager:
             self.mod_call_time = 0
             self.in_rp = False
             self.ipid = ipid
+            self.voting = 0
+            self.voting_at = 0
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -81,15 +83,6 @@ class ClientManager:
         def send_motd(self):
             self.send_host_message('=== MOTD ===\r\n{}\r\n============='.format(self.server.config['motd']))
 
-        def is_valid_name(self, name):
-            name_ws = name.replace(' ', '')
-            if not name_ws or name_ws.isdigit():
-                return False
-            for client in self.server.client_manager.clients:
-                if client.name == name:
-                    return False
-            return True
-            
         def disconnect(self):
             self.transport.close()
 
@@ -174,12 +167,12 @@ class ClientManager:
             msg = '=== Areas ==='
             lock = {True: '[LOCKED]', False: ''}
             for i, area in enumerate(self.server.area_manager.areas):
-                owner = 'FREE'
+                owner = ''
                 if area.owned:
                     for client in [x for x in area.clients if x.is_cm]:
-                        owner = 'MASTER: {}'.format(client.get_char_name())
+                        owner = '[AREA FAG: {}]'.format(client.get_char_name())
                         break
-                msg += '\r\nArea {}: {} (users: {}) [{}][{}]{}'.format(i, area.name, len(area.clients), area.status, owner, lock[area.is_locked])
+                msg += '\r\nArea {}: {} (users: {}) [{}]{}{}'.format(i, area.name, len(area.clients), area.status, owner, lock[area.is_locked])
                 if self.area == area:
                     msg += ' [*]'
             self.send_host_message(msg)
@@ -372,10 +365,10 @@ class ClientManager:
                     if value.lower().startswith(client.get_ipreal().lower()):
                         targets.append(client)
                 elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(client.name.lower()) and client.name:
+                    if value == client.name and client.name:
                         targets.append(client)
                 elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(client.get_char_name().lower()):
+                    if value.lower() == client.get_char_name().lower():
                         targets.append(client)
                 elif key == TargetType.ID:
                     if client.id == value:

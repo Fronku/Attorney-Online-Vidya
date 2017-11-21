@@ -406,40 +406,52 @@ def ooc_cmd_area(client, arg):
             raise
     else:
         raise ArgumentError('Too many arguments. Use /area <id>.')
-        
+
 def ooc_cmd_pm(client, arg):
     args = arg.split()
-    key = ''
-    msg = None
+    ooc_name = 1
     if len(args) < 2:
-        raise ArgumentError('Not enough arguments. use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".')
-    targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
-    key = TargetType.CHAR_NAME
-    if len(targets) == 0 and args[0].isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
-        key = TargetType.ID
-    elif len(targets) == 0:
-        targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
-        key = TargetType.OOC_NAME
-    else:
-        raise ArgumentError('No targets found.')
-    try:
-        if key == TargetType.ID:
-            msg = ' '.join(args[1:])
+        raise ArgumentError('Not enough arguments. Use /pm <target>: <message>.')
+    target_clients = []
+    for word in args:
+        if word.lower().endswith(':'):
+            break
         else:
-            if key == TargetType.CHAR_NAME:
-                msg = arg[len(targets[0].get_char_name()) + 1:]
-            if key == TargetType.OOC_NAME:
-                msg = arg[len(targets[0].name) + 1:]
-    except:
-        raise ArgumentError('Not enough arguments. Use /pm <target> <message>.')
-    c = targets[0]
-    if c.pm_mute:
-        raise ClientError('This user muted all pm conversation')
+            ooc_name += 1
+    if ooc_name == len(args) + 1:
+        raise ArgumentError('Invalid syntax. Add \':\' in the end of target.')
+    namedrop = ' '.join(args[:ooc_name])
+    namedrop = namedrop[:len(namedrop)-1]
+    msg = ' '.join(args[ooc_name:])
+    if not msg:
+        raise ArgumentError('Not enough arguments. Use /pm <target>: <message>.')
+    for char_name in client.server.char_list:
+        if namedrop.lower() == char_name.lower():
+            try:
+                c = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, char_name, True)
+            except Exception as n:
+                client.send_host_message('{}'.format(n))
+            if c:
+                target_clients += c
+    if not target_clients:
+        try:
+            target_clients = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, namedrop, True)
+        except Exception as n:
+            client.send_host_message('{}'.format(n))
+    if not target_clients:
+        client.send_host_message('No targets {} found.'.format(namedrop))
     else:
-        c.send_host_message('PM from {} in {} ({}): {}'.format(client.name, client.area.name, client.get_char_name(), msg))
-        client.send_host_message('PM sent to {}. Message: {}'.format(args[0], msg))
- 
+        sent_num = 0
+        for c in target_clients:
+            if not c.pm_mute:
+                c.send_host_message(
+                    'PM from {} in {} ({}): {}'.format(client.name, client.area.name, client.get_char_name(), msg))
+                sent_num += 1
+        if sent_num == 0:
+            client.send_host_message('Target(s) not receiving PMs because of mute.')
+        else:
+            client.send_host_message('PM sent to {}, {} user(s). Message: {}'.format(namedrop, sent_num, msg))
+
 def ooc_cmd_mutepm(client, arg):
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
@@ -733,3 +745,79 @@ def ooc_cmd_unblockdj(client, arg):
         target.is_dj = True
         target.send_host_message('Now you can change music.')
     client.send_host_message('Unblockdj\'d {}.'.format(targets[0].get_char_name()))
+
+def ooc_cmd_vote(client, arg):
+    if len(arg) == 0:
+        print("a")
+        polls = client.server.serverpoll_manager.show_poll_list()
+        if not polls:
+            client.send_host_message('There are currently no polls to vote for. Have a nice day, and God bless.')
+        else:
+            message = 'Current polls:'
+            for x, poll in enumerate(polls):
+                message += '\n{}. {}'.format(x + 1, poll)
+            message += '\nEnter the number of the poll in which you would like to vote in. Enter 0 to cancel.'
+            client.send_host_message(message)
+            client.voting += 1
+    else:
+        client.send_host_message('This command doesn\'t take arguments')
+
+def ooc_cmd_votelist(client, arg):
+    if len(arg) > 0:
+        client.send_host_message('This command doesn\'t take arguments')
+    else:
+        polls = client.server.serverpoll_manager.show_poll_list()
+        if not polls:
+            client.send_host_message('There are currently no polls.')
+        else:
+            message = 'Current polls:'
+            for x, poll in enumerate(polls):
+                message += '\n{}. {}'.format(x + 1, poll)
+            client.send_host_message(message)
+
+def ooc_cmd_pollset(client, arg):
+    if client.is_mod:
+        client.server.serverpoll_manager.add_poll(arg)
+        client.send_host_message('Added {} as a poll.'.format(arg))
+    else:
+        return
+
+def ooc_cmd_pollremove(client, arg):
+    if client.is_mod:
+        client.server.serverpoll_manager.remove_poll(arg)
+        client.send_host_message('Removed {} as a poll.'.format(arg))
+    else:
+        return
+
+def ooc_cmd_kms(client, arg):
+    ip = client.get_ip()
+    targets = client.server.client_manager.get_targets_by_ip(ip)
+    for target in targets:
+        if target != client:
+            target.disconnect()
+    client.send_host_message('Kicked other instances of client.')
+
+def ooc_cmd_setupdate(client, arg):
+    if client.is_mod:
+        client.server.data['update'] = arg
+        client.server.save_data()
+        client.send_host_message('Update set!')
+
+def ooc_cmd_update(client, arg):
+    try:
+        client.send_host_message('Latest Update: {}'.format(client.server.data['update']))
+    except ServerError:
+        client.send_host_message('Update not set!')
+
+def ooc_cmd_setthread(client, arg):
+    if client.is_mod:
+        client.server.data['thread'] = arg
+        client.server.save_data()
+        client.send_host_message('Thread set!')
+
+
+def ooc_cmd_update(client, arg):
+    try:
+        client.send_host_message('Curent Thread: {}'.format(client.server.data['update']))
+    except ServerError:
+        client.send_host_message('Update not set!')

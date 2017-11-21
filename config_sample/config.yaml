@@ -27,3 +27,5 @@ music_change_floodguard:
   times_per_interval: 3
   interval_length: 20
   mute_length: 180
+
+poll_slots: 30
