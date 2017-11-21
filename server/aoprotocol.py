@@ -361,9 +361,6 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
 
-        if self.client.area.is_recording:
-            self.client.area.recorded_messages.append(args)
-
     def net_cmd_ct(self, args):
         """ OOC Message
 
@@ -375,17 +372,44 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR):
             return
-        if self.client.name != args[0] and self.client.fake_name != args[0]:
-            if self.client.is_valid_name(args[0]):
-                self.client.name = args[0]
-                self.client.fake_name = args[0]
-            else:
-                self.client.fake_name = args[0]
-        if self.client.name == '':
-            self.client.send_host_message('You must insert a name with at least one letter')
-            return
+        if self.client.name == '' or self.client.name != args[0]:
+            self.client.name = args[0]
         if self.client.name.startswith(self.server.config['hostname']) or self.client.name.startswith('<dollar>G'):
             self.client.send_host_message('That name is reserved!')
+            return
+        if self.client.voting == 2:
+            polls = self.client.server.serverpoll_manager.show_poll_list()
+            if args[1].lower() == 'yes':
+                self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], 'yes', self.client)
+            elif args[1].lower() == 'no':
+                print(args[1])
+                self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], 'no', self.client)
+            else:
+                self.client.send_host_message('Input Error, expected input \'yes\' or \'no\', voting cancelled.')
+            self.client.voting_at = 0
+            self.client.voting = 0
+            return
+        if self.client.voting == 1:
+            num = -1
+            try:
+                num = int(args[1])
+            except:
+                self.client.send_host_message('Input Error, expected integer. \n Choose which poll to vote, enter 0 to cancel.')
+                return
+            if num in range(1, self.client.server.serverpoll_manager.poll_number()+1):
+                self.client.voting += 1
+                self.client.voting_at = num - 1
+                polls = self.client.server.serverpoll_manager.show_poll_list()
+                polldetail = self.client.server.serverpoll_manager.returndetail(polls[self.client.voting_at])
+                if polldetail is None:
+                    self.client.send_host_message('Now voting for {}.) {}.\n Enter "Yes" or "No".'.format(num ,polls[self.client.voting_at]))
+                else:
+                    self.client.send_host_message('Now voting for {}.) {}.\n Details: {}.\n Enter "Yes" or "No".'.format(num ,polls[self.client.voting_at], polldetail))
+            elif num == 0:
+                self.client.voting = 0
+                self.client.send_host_message('Voting cancelled.')
+            else:
+                self.client.send_host_message('Input Error, out of range/invalid poll number.\n Choose which poll to vote, enter 0 to cancel. ')
             return
         if args[1].startswith('/'):
             spl = args[1][1:].split(' ', 1)
