@@ -299,7 +299,6 @@ class ClientManager:
                        'KILL ME',
                        'I found this place on reddit XD',
                        'how do i redtext?',
-                       '(((((case????)))))',
                        'Anyone else a fan of MLP?',
                        'does this server have sans from undertale?',
                        'what does call mod do',
@@ -325,7 +324,22 @@ class ClientManager:
                        'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
                        'Come back, lewdton.',
                        'Chiaki is my waifu!',
-                       'PLAY NORMIES PLS']
+                       'PLAY NORMIES PLS',
+                       'omit what I just said I was gimped',
+                       'Fuck off jumbles',
+                       'his head was fuck up',
+                       'yea i lied',
+                       'Cofee knife',
+                       'Hide the rips.',
+                       'Turkey, a favorite of mine',
+                       'case?',
+                       '((Case?))',
+                       '((case?))',
+                       '( ( c a s e ? ) )',
+                       '(((((case????)))))',
+                       '((hello is someone casing here?))',
+                       '((pardon me, i might have just interrupted but is there a case going on in this area?))',
+                       '((status?))']
             return random.choice(message)
 
     def __init__(self, server):
