@@ -23,6 +23,7 @@ from server.constants import TargetType
 
 import time
 import re
+import random
 
 
 
@@ -261,7 +262,8 @@ class ClientManager:
         def get_ip(self):
             return self.ipid
 
-
+        def get_ipreal(self):
+            return self.transport.get_extra_info('peername')[0]
 		
         def get_char_name(self):
             if self.char_id == -1:

@@ -638,8 +638,8 @@ def ooc_cmd_ooc_mute(client, arg):
     targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
     if not targets:
         raise ArgumentError('Targets not found. Use /ooc_mute <OOC-name>.')
-    for target in targets:
-        target.is_ooc_muted = True
+    for c in targets:
+        c.is_ooc_muted = True
     client.send_host_message('Muted {} existing client(s).'.format(len(targets)))
 
 def ooc_cmd_ooc_unmute(client, arg):
@@ -647,7 +647,7 @@ def ooc_cmd_ooc_unmute(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify a target. Use /ooc_mute <OOC-name>.')
-    targets = client.server.client_manager.get_targets(client, TargetType.ID, arg, False)
+    targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
     if not targets:
         raise ArgumentError('Target not found. Use /ooc_mute <OOC-name>.')
     for target in targets:
@@ -711,6 +711,26 @@ def ooc_cmd_gimp(client, arg):
             logger.log_server('Gimping {}.'.format(c.get_ip(), client))
             c.gimp = True
         client.send_host_message('Gimped {} targets.'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
+
+def ooc_cmd_ungimp(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /gimp <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Ungimping {}.'.format(c.get_ip(), client))
+            c.gimp = False
+        client.send_host_message('Ungimped {} targets.'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
 
