@@ -134,8 +134,6 @@ class ClientManager:
                 raise ClientError('User is already in target area.')
             if area.is_locked and not self.is_mod and not (self.ipid in area.invite_list):
                 raise ClientError('That area is locked!')
-            if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
-                raise ClientError('That area is locked!')
             old_area = self.area
             if not area.is_char_available(self.char_id):
                 try:
