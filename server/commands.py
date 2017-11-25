@@ -95,60 +95,39 @@ def ooc_cmd_allow_iniswap(client, arg):
     
     
 def ooc_cmd_roll(client, arg):
-    roll_max = 11037
+    roll_max = 11038
+    dice_max = 21
+    results = []
+    rolls = []
     if len(arg) != 0:
+        rolls = arg.split("d")
         try:
-            val = list(map(int, arg.split(' ')))
-            if not 1 <= val[0] <= roll_max:
-                raise ArgumentError('Roll value must be between 1 and {}.'.format(roll_max))
+            for v, roll in enumerate(rolls):
+                rolls[v]= int(roll)
+            if len(rolls) == 1:
+                if not 1 <= rolls[0] <=  roll_max:
+                    raise ArgumentError('Roll value must be between 1 and {}.'.format(roll_max - 1))
+                roll = random.randint(1, rolls[0])
+            else:
+                if 1 <= rolls[0] >= dice_max:
+                    raise ArgumentError('Dice value must be between 1 and {}!'.format(dice_max - 1))
+                elif 1 <= rolls[1] >= roll_max:
+                    raise ArgumentError('Roll value must be between 1 and {}.'.format(roll_max - 1))
+                for i in range(rolls[0]):
+                    results.append( random.randint(1, rolls[1]))
         except ValueError:
-            raise ArgumentError('Wrong argument. Use /roll [<max>] [<num of rolls>]')
+            raise ArgumentError('Argument must be a number')
     else:
-        val = [6]
-    if len(val) == 1:
-        val.append(1)
-    if len(val) > 2:
-        raise ArgumentError('Too much arguments. Use /roll [<max>] [<num of rolls>]')
-    if val[1] > 20 or val[1] < 1:
-        raise ArgumentError('Num of rolls must be between 1 and 20')
-    roll = ''
-    for i in range(val[1]):
-        roll += str(random.randint(1, val[0])) + ', '
-    roll = roll[:-2]
-    if val[1] > 1:
-        roll = '(' + roll + ')'
-    client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, val[0]))
-    logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, val[0]))
-        
-def ooc_cmd_rollp(client, arg):
-    roll_max = 11037
-    if len(arg) != 0:
-        try:
-            val = list(map(int, arg.split(' ')))
-            if not 1 <= val[0] <= roll_max:
-                raise ArgumentError('Roll value must be between 1 and {}.'.format(roll_max))
-        except ValueError:
-            raise ArgumentError('Wrong argument. Use /roll [<max>] [<num of rolls>]')
+        rolls.append(0)
+        rolls[0] = 6
+        roll = random.randint(1, 6)
+    if results:
+        msg = '{} rolled {}d{}: {} = {}'.format(client.get_char_name(), rolls[0], rolls[1], results, sum(results))
+        client.area.send_host_message( msg )
     else:
-        val = [6]
-    if len(val) == 1:
-        val.append(1)
-    if len(val) > 2:
-        raise ArgumentError('Too much arguments. Use /roll [<max>] [<num of rolls>]')
-    if val[1] > 20 or val[1] < 1:
-        raise ArgumentError('Num of rolls must be between 1 and 20')
-    roll = ''
-    for i in range(val[1]):
-        roll += str(random.randint(1, val[0])) + ', '
-    roll = roll[:-2]
-    if val[1] > 1:
-        roll = '(' + roll + ')'
-    client.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, val[0]))
-    client.area.send_host_message('{} rolled.'.format(client.get_char_name(), roll, val[0]))
-    SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
-    logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, val[0]))
+        msg = '{} rolled {} out of {}'.format(client.get_char_name(), roll, rolls[0] )
+        client.area.send_host_message(msg)
+    logger.log_server(msg + ' in area {} using /roll'.format(client.area.id))
 
 def ooc_cmd_currentmusic(client, arg):
     if len(arg) != 0:
@@ -837,8 +816,7 @@ def ooc_cmd_addpolldetail(client, arg):
         return
 
 def ooc_cmd_kms(client, arg):
-    hdid = client.hdid
-    targets = client.server.client_manager.get_targets(client, TargetType.HDID, hdid, False)
+    targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
     for target in targets:
         if target != client:
             target.disconnect()
@@ -867,3 +845,20 @@ def ooc_cmd_thread(client, arg):
         client.send_host_message('Curent Thread: {}'.format(client.server.data['thread']))
     except Exception as n:
         client.send_host_message(n)
+
+def ooc_cmd_judgelog(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        area = client.area
+    else:
+        try:
+            area = client.server.area_manager.get_area_by_id(int(arg))
+        except AreaError:
+            raise
+        except ValueError:
+            raise ArgumentError('Invalid area ID. Use /judgelog <id>.')
+    msg = '=== Judge Log [{}] ==='.format(area.id)
+    for j in area.judgelog:
+        msg += '\r\n{}'.format(j)
+    client.send_host_message(msg)
