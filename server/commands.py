@@ -23,6 +23,14 @@ from server.constants import TargetType
 from server import logger
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
+targetreturntype = {
+    'ip': TargetType.IP,
+    'ipid': TargetType.IPID,
+    'hdid': TargetType.HDID,
+    'ooc': TargetType.OOC_NAME,
+    'char': TargetType.CHAR_NAME,
+    'id': TargetType.ID
+}
 
 def ooc_cmd_switch(client, arg):
     if len(arg) == 0:
@@ -173,14 +181,25 @@ def ooc_cmd_help(client, arg):
 def ooc_cmd_kick(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10:
-        raise ArgumentError('You must specify a target. Use /kick <ipid>.')
-    if len(arg) == 10 and arg.isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    elif len(arg) < 10 and arg.isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
-    if targets:
-        for c in targets:
+    kicklist = []
+    args = arg.split()
+    if not len(args) <= 2:
+        raise ClientError('You must specify kick type. /kick [\'ip\',\'ipid\', \'hdid\', \'id\',\'char\' or \'ooc\'] [\'value\'] ')
+    if args[0].lower() == 'ip':
+        kicklist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'ipid':
+        kicklist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+    elif args[0].lower() == 'hdid':
+        kicklist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'id':
+        kicklist = client.server.client_manager.get_targets(client, TargetType.ID, ''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'char':
+        kicklist = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, ' '.join(args[1:]), True)
+    elif args[0].lower() == 'ooc':
+        kicklist = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, ' '.join(args[1:]), True)
+    print(kicklist)
+    if kicklist:
+        for c in kicklist:
             logger.log_server('Kicked {}.'.format(c.ipid), client)
             client.send_host_message("{} was kicked.".format(c.get_char_name()))
             c.disconnect()
@@ -190,35 +209,39 @@ def ooc_cmd_kick(client, arg):
 def ooc_cmd_ban(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    try:
-        ipid = int(arg.strip())
-        integer = True
-    except ValueError:
-        ipid = arg.strip()
-        integer = False
-    try:
-        client.server.ban_manager.add_ban(ipid)
-    except ServerError:
-        raise
-    if ipid is not None:
-        if integer:
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, ipid, False)
-        else:
-            targets = client.server.client_manager.get_targets(client, TargetType.IP, ipid, False)
-        if targets:
-            for c in targets:
-                c.disconnect()
-            client.send_host_message('{} clients were kicked.'.format(len(targets)))
-        client.send_host_message('{} was banned.'.format(ipid))
-        logger.log_server('Banned {}.'.format(ipid), client)
-        
+    banlist = []
+    args = arg.split()
+    if not len(args) <= 2:
+        raise ClientError('You must specify ban type. /ban [\'ip\',\'ipid\', \'hdid\' or \'id\'] [\'value\'] ')
+    if args[0].lower() == 'ip':
+        banlist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'ipid':
+        banlist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+    elif args[0].lower() == 'hdid':
+        banlist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'id':
+        banlist = client.server.client_manager.get_targets(client, TargetType.ID, ''.join(args[1:]).strip(), False)
+    if banlist:
+        ban = banlist[0].get_ip()
+        try:
+            client.server.ban_manager.add_ban(ban)
+        except ServerError:
+            raise
+        for c in banlist:
+            c.disconnect()
+        client.send_host_message('{} clients were kicked.'.format(len(banlist)))
+        client.send_host_message('{} was banned.'.format(ban))
+        logger.log_server('Banned {}.'.format(ban), client)
+    else:
+        client.send_host_message('No targets found.')
+
 def ooc_cmd_unban(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     try:
         client.server.ban_manager.remove_ban(int(arg.strip()))
     except:
-        raise ClientError('You must specify \'hdid\'')
+        raise ClientError('Must be IP or IPID')
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
 
@@ -235,29 +258,76 @@ def ooc_cmd_play(client, arg):
 def ooc_cmd_mute(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
-        c.is_muted = True
-        client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
-    except:
-        client.send_host_message("No targets found. Use /mute <id> for mute")
+    mutelist = []
+    args = arg.split()
+    if not len(args) == 2 and not args[0].lower() == 'all':
+        raise ClientError('You must specify mute type. /mute [\'ip\',\'ipid\', \'hdid\', \'id\',\'char\', \'ooc\'] [\'value\'] or /unmute all ')
+    if args[0].lower() == 'ip':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'ipid':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+    elif args[0].lower() == 'hdid':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'id':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.ID, ''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'char':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, ' '.join(args[1:]), True)
+    elif args[0].lower() == 'ooc':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, ' '.join(args[1:]), True)
+    elif args[0].lower() == 'all':
+        mutelist = client.area.clients
+    else:
+        raise ClientError('Type error. Values taken are: [ip,ipid, hdid, id, char, ooc, all] ')
+    if len(mutelist) > 0:
+        try:
+            mod_num = 0
+            for c in mutelist:
+                if c.is_mod:
+                    mod_num += 1
+                else:
+                    c.is_muted = True
+            client.send_host_message('Muted {} existing client(s).'.format(len(mutelist) - mod_num))
+        except:
+            client.send_host_message("No targets found. Use /mute [\'ip\',\'ipid\', \'hdid\', \'id\',\'char\', \'ooc\'] [\'value\'] or /unmute all")
+    else:
+        client.send_host_message('No targets found.')
 
 def ooc_cmd_unmute(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
-        c.is_muted = False
-        client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
-    except:
-        client.send_host_message("No targets found. Use /mute <id> for mute")
+    mutelist = []
+    args = arg.split()
+    if not len(args) == 2 and not args[0].lower() == 'all':
+        raise ClientError('You must specify mute type. /unmute [\'ip\',\'ipid\', \'hdid\', \'id\',\'char\', \'ooc\'] [\'value\'] or /unmute all ')
+    if args[0].lower() == 'ip':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'ipid':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+    elif args[0].lower() == 'hdid':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'id':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.ID, ''.join(args[1:]).strip(), False)
+    elif args[0].lower() == 'char':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, ' '.join(args[1:]), True)
+    elif args[0].lower() == 'ooc':
+        mutelist = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, ' '.join(args[1:]), True)
+    elif args[0].lower() == 'all':
+        mutelist = client.area.clients
+    else:
+        raise ClientError('Type error. Values taken are: [ip,ipid, hdid, id, char, ooc, all] ')
+    if len(mutelist) > 0:
+        try:
+            mod_num = 0
+            for c in mutelist:
+                if c.is_mod:
+                    mod_num += 1
+                else:
+                    c.is_muted = False
+            client.send_host_message('Unmuted {} existing client(s).'.format(len(mutelist) - mod_num))
+        except:
+            client.send_host_message("No targets found. Use /unmute [\'ip\',\'ipid\', \'hdid\', \'id\',\'char\', \'ooc\'] [\'value\'] or /unmute all")
+    else:
+        client.send_host_message('No targets found.')
     
 def ooc_cmd_login(client, arg):
     if len(arg) == 0:
@@ -499,11 +569,11 @@ def ooc_cmd_cm(client, arg):
             client.area.broadcast_evidence_list()
         client.area.send_host_message('{} is CM in this area now.'.format(client.get_char_name()))
     
-def ooc_cmd_unmod(client, arg):
+def ooc_cmd_logout(client, arg):
     client.is_mod = False
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
-    client.send_host_message('you\'re not a mod now')
+    client.send_host_message('You\'re not a mod now')
     
 def ooc_cmd_area_lock(client, arg):
     if not client.area.locking_allowed:

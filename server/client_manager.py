@@ -189,7 +189,7 @@ class ClientManager:
             for c in sorted_clients:
                 info += '\r\n[{}] {}'.format(c.id, c.get_char_name())
                 if self.is_mod:
-                    info += ' ({})'.format(c.ipid)
+                    info += ' (IPID: {}) (HDID: {}) '.format(c.ipid, c.hdid)
             return info
 
         def send_area_info(self, area_id, mods): 
@@ -383,10 +383,17 @@ class ClientManager:
                     if value.lower() == client.get_char_name().lower():
                         targets.append(client)
                 elif key == TargetType.ID:
-                    if client.id == value:
+                    try:
+                        int(value)
+                    except AttributeError:
+                        return
+                    if client.id == int(value):
                         targets.append(client)
                 elif key == TargetType.IPID:
                     if client.ipid == value:
+                        targets.append(client)
+                elif key == TargetType.HDID:
+                    if value == client.hdid:
                         targets.append(client)
         return targets
             
