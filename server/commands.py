@@ -183,12 +183,12 @@ def ooc_cmd_kick(client, arg):
         raise ClientError('You must be authorized to do that.')
     kicklist = []
     args = arg.split()
-    if not len(args) <= 2:
+    if not len(args) >= 2:
         raise ClientError('You must specify kick type. /kick [\'ip\',\'ipid\', \'hdid\', \'id\',\'char\' or \'ooc\'] [\'value\'] ')
     if args[0].lower() == 'ip':
         kicklist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'ipid':
-        kicklist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+        kicklist = client.server.client_manager.get_targets(client, TargetType.IPID, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'hdid':
         kicklist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'id':
@@ -211,18 +211,18 @@ def ooc_cmd_ban(client, arg):
         raise ClientError('You must be authorized to do that.')
     banlist = []
     args = arg.split()
-    if not len(args) <= 2:
+    if not len(args) == 2:
         raise ClientError('You must specify ban type. /ban [\'ip\',\'ipid\', \'hdid\' or \'id\'] [\'value\'] ')
     if args[0].lower() == 'ip':
         banlist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'ipid':
-        banlist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+        banlist = client.server.client_manager.get_targets(client, TargetType.IPID, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'hdid':
         banlist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'id':
         banlist = client.server.client_manager.get_targets(client, TargetType.ID, ''.join(args[1:]).strip(), False)
     if banlist:
-        ban = banlist[0].get_ip()
+        ban = banlist[0].ipid
         try:
             client.server.ban_manager.add_ban(ban)
         except ServerError:
@@ -260,12 +260,12 @@ def ooc_cmd_mute(client, arg):
         raise ClientError('You must be authorized to do that.')
     mutelist = []
     args = arg.split()
-    if not len(args) == 2 and not args[0].lower() == 'all':
+    if not len(args) >= 2 and not args[0].lower() == 'all':
         raise ClientError('You must specify mute type. /mute [\'ip\',\'ipid\', \'hdid\', \'id\',\'char\', \'ooc\'] [\'value\'] or /unmute all ')
     if args[0].lower() == 'ip':
         mutelist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'ipid':
-        mutelist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+        mutelist = client.server.client_manager.get_targets(client, TargetType.IPID, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'hdid':
         mutelist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'id':
@@ -302,7 +302,7 @@ def ooc_cmd_unmute(client, arg):
     if args[0].lower() == 'ip':
         mutelist = client.server.client_manager.get_targets(client, TargetType.IP, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'ipid':
-        mutelist = client.server.client_manager.get_targets(client, TargetType.IPID, int(''.join(args[1:]).strip()), False)
+        mutelist = client.server.client_manager.get_targets(client, TargetType.IPID, ''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'hdid':
         mutelist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'id':
@@ -511,10 +511,10 @@ def ooc_cmd_charselect(client, arg):
     else:
         if client.is_mod:
             try:
-                if len(arg) < 10 and arg.isdigit():
+                if len(arg) < 12 and arg.isdigit():
                     client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].char_select()
-                elif len(arg) == 10 and arg.isdigit():
-                    client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False).char_select()
+                elif len(arg) == 12 and arg.isdigit():
+                    client.server.client_manager.get_targets(client, TargetType.IPID, arg, False).char_select()
             except:
                 raise ArgumentError('Wrong arguments. Use /charselect <target\'s id>')
                 
@@ -648,9 +648,9 @@ def ooc_cmd_area_kick(client, arg):
     if not arg:
         raise ClientError('You must specify a target. Use /area_kick <id>')
     arg = arg.split(' ')
-    if len(arg[0]) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg[0]), False)
-    elif len(arg[0]) < 10:
+    if len(arg[0]) == 12:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, arg[0], False)
+    elif len(arg[0]) < 12:
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
     if targets:
         try:
@@ -707,9 +707,9 @@ def ooc_cmd_disemvowel(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
+        if len(arg) == 12:
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, arg, False)
+        elif len(arg) < 12 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
     except:
         raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
@@ -727,9 +727,9 @@ def ooc_cmd_undisemvowel(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
+        if len(arg) == 12:
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, arg, False)
+        elif len(arg) < 12 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
@@ -747,9 +747,9 @@ def ooc_cmd_gimp(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
+        if len(arg) == 12:
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, arg, False)
+        elif len(arg) < 12 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /gimp <id>.')
@@ -767,9 +767,9 @@ def ooc_cmd_ungimp(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
+        if len(arg) == 12 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, arg, False)
+        elif len(arg) < 12 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /gimp <id>.')

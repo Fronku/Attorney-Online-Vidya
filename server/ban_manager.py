@@ -23,7 +23,7 @@ from server.exceptions import ServerError
 
 class BanManager:
     def __init__(self):
-        self.bans = []
+        self.bans = {}
         self.load_banlist()
 
     def load_banlist(self):
@@ -31,7 +31,9 @@ class BanManager:
             with open('storage/banlist.json', 'r') as banlist_file:
                 self.bans = json.load(banlist_file)
         except FileNotFoundError:
-            return
+            with open('storage/banlist.json', 'w') as poll_list_file:
+                json.dump({}, poll_list_file)
+
 
     def write_banlist(self):
         with open('storage/banlist.json', 'w') as banlist_file:
@@ -39,18 +41,12 @@ class BanManager:
 
     def add_ban(self, ip):
         try:
-            try:
-                int(ip)
-            except ValueError:
-                ipaddress.ip_address(ip)
-                ip = self.server.get_ipid(ip)
-        except ValueError:
-            raise ServerError('Argument must be an IP address or 10-digit number.')
-        if ip not in self.bans:
-            self.bans.append(ip)
-        else:
-            raise ServerError('User is already banned.')
-        self.write_banlist()
+            x = len(ip)
+        except AttributeError:
+            raise ServerError('Argument must be an 12-digit number.')
+        if x == 12:
+            self.bans[ip] = True
+            self.write_banlist()
 
     def remove_ban(self, ip):
         try:
@@ -61,11 +57,13 @@ class BanManager:
                 ip = self.server.get_ipid(ip)
         except ValueError:
             raise ServerError('Argument must be an IP address or 10-digit number.')
-        if ip in self.bans:
-            self.bans.remove(ip)
-        else:
-            raise ServerError('This IPID is not banned.')
+        del self.bans[ip]
         self.write_banlist()
 
     def is_banned(self, ipid):
-        return (ipid in self.bans)
+        try:
+            return self.bans[ipid]
+        except IndexError:
+            return False
+
+

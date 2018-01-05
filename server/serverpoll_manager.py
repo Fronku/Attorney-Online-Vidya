@@ -159,7 +159,7 @@ class ServerpollManager:
             stream = open('storage/poll/{} \'{}\'.yaml'.format(poll_voting[1], poll_voting[0]), 'r')
             self.vote = yaml.load(stream)
             log = self.vote['log']
-            if [item for item in log if item[1] == client.get_ip()] or [item for item in log if item[2] == client.get_hdid()]:
+            if [item for item in log if item[1] == client.ipid] or [item for item in log if item[2] == client.hdid]:
                 # Now to log their failed vote
                 self.vote['log'] += (['FAILED VOTE', tmp, client.ipid, client.hdid, "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
                 self.write_votelist(poll_voting)

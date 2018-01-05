@@ -20,6 +20,7 @@ import asyncio
 import yaml
 import json
 import random
+import hashlib
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -41,13 +42,11 @@ class TsuServer3:
         self.area_manager = AreaManager(self)
         self.serverpoll_manager = ServerpollManager(self)
         self.ban_manager = BanManager()
-        self.software = 'tsuserver3'
-        self.version = 'tsuserver3dev'
+        self.software = 'tsuserver3aov'
+        self.version = 'tsuserver3aov'
         self.release = 3
         self.major_version = 1
         self.minor_version = 1
-        self.ipid_list = {}
-        self.hdid_list = {}
         self.char_list = None
         self.char_pages_ao1 = None
         self.music_list = None
@@ -58,8 +57,8 @@ class TsuServer3:
         self.load_characters()
         self.load_music()
         self.load_backgrounds()
-        self.load_ids()
         self.load_data()
+        self.load_ids()
         self.district_client = None
         self.ms_client = None
         self.rp_mode = False
@@ -118,9 +117,18 @@ class TsuServer3:
     def load_config(self):
         with open('config/config.yaml', 'r', encoding = 'utf-8') as cfg:
             self.config = yaml.load(cfg)
-            self.config['motd'] = self.config['motd'].replace('\\n', ' \n') 
+            self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
         if 'music_change_floodguard' not in self.config:
             self.config['music_change_floodguard'] = {'times_per_interval': 1,  'interval_length': 0, 'mute_length': 0}
+
+    def load_ids(self):
+        self.hdid_list = {}
+        # load hdids
+        try:
+            with open('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
+                self.hdid_list = json.loads(whole_list.read())
+        except:
+            logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json is exist then remove it.')
 
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:
@@ -132,45 +140,25 @@ class TsuServer3:
             self.music_list = yaml.load(music)
         self.build_music_pages_ao1()
         self.build_music_list_ao2()
-        
-    def load_ids(self):
-        self.ipid_list = {}
-        self.hdid_list = {}
-        #load ipids
-        try:
-            with open('storage/ip_ids.json', 'r', encoding = 'utf-8') as whole_list:
-                self.ipid_list = json.loads(whole_list.read())
-        except:
-            logger.log_debug('Failed to load ip_ids.json from ./storage. If ip_ids.json is exist then remove it.')
-        #load hdids
-        try:
-            with open('storage/hd_ids.json', 'r', encoding = 'utf-8') as whole_list:
-                self.hdid_list = json.loads(whole_list.read())
-        except:
-            logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json is exist then remove it.')
 
     def load_data(self):
         with open('config/data.yaml', 'r') as data:
             self.data = yaml.load(data)
-           
-    def dump_ipids(self):
-        with open('storage/ip_ids.json', 'w') as whole_list:
-            json.dump(self.ipid_list, whole_list)
-            
-    def dump_hdids(self):
-        with open('storage/hd_ids.json', 'w') as whole_list:
-            json.dump(self.hdid_list, whole_list)
-         
+
+    def save_data(self):
+        with open('config/data.yaml', 'w') as data:
+            json.dump(self.data, data)
+
+    def save_id(self):
+        with open('storage/hd_ids.json', 'w') as data:
+            json.dump(self.hdid_list, data)
+
     def get_ipid(self, ip):
-        if not (ip in self.ipid_list):
-            while True:
-                ipid = random.randint(0,10**10-1)
-                if ipid not in self.ipid_list:
-                    break
-            self.ipid_list[ip] = ipid
-            self.dump_ipids()
-        return self.ipid_list[ip]
-         
+        x = ip + str(self.config['server_number'])
+        hash_object = hashlib.sha256(x.encode('utf-8'))
+        hash = hash_object.hexdigest()[:12]
+        return hash
+
     def load_backgrounds(self):
         with open('config/backgrounds.yaml', 'r', encoding = 'utf-8') as bgs:
             self.backgrounds = yaml.load(bgs)
