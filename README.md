@@ -1,6 +1,6 @@
 # tsuserver3
 
-A Python-based server for Attorney Online.
+A Python-based server for Attorney Online Vidya.
 
 Requires Python 3.6+ and PyYAML.
 
