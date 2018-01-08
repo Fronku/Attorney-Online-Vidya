@@ -31,30 +31,30 @@ Requires Python 3.6+ and PyYAML.
 ### User Commands
 
 * **help**
-    - Links to this readme
+    - Links to this repository
 * **g** "message" 
-    - Sends a serverwide message
+    - Sends a serverwide ooc message
 * **toggleglobal** 
-    - Toggles global on and off
+    - Toggles whether you see global messages
 * **need** "message" 
     - Sends a serverwide advert
 * **toggleadverts** 
-    - Toggles adverts on and off
+    - Toggles whether you see adverts
 * **area** "area number" 
-    - Displays all areas when blank, swaps to area with number
+    - Displays all areas when blank, switched to area when area number is supplied
 * **getarea** 
     - Shows the current characters in your area
 * **getareas** 
     - Shows all characters in all areas
 * **doc** "url" 
-    - Gives the doc url if blank, updates the doc url
+    - Gives the doc url if blank, updates the doc url when url is supplied
 * **cleardoc** 
     - Clears the doc url
 * **status** "status" 
-    - Shows current areas status if blank, updates the status
+    - Shows current areas status if blank, updates the status when status is supplied
     - Statuses: 'idle', 'building-open', 'building-full', 'casing-open', 'casing-full', 'recess'
 * **pm** "target" "Message" 
-    - PMs the target, can either be character name or OOC name
+    - PMs the target, can either be character name, ID, or OOC name
 * **pmmute**
     - Disables all incoming PMs
 * **charselect** 
@@ -127,6 +127,10 @@ Requires Python 3.6+ and PyYAML.
     - Mutes the target from changing music. 
 * **unblockdj** "target"
     - Undo previous command.
+* **gimp** "target"
+    - Changes messages from the target to one from a list
+* **ungimp** "target"
+    - Allows the target to speak normally once again.
 * **evidence_mod** <MOD>
     - Changes evidence_mod in this area. Possible values: FFA, CM, HiddenCM, Mods
         * **FFA**
