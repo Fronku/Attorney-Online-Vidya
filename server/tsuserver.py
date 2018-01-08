@@ -42,8 +42,8 @@ class TsuServer3:
         self.area_manager = AreaManager(self)
         self.serverpoll_manager = ServerpollManager(self)
         self.ban_manager = BanManager()
-        self.software = 'tsuserver3aov'
-        self.version = 'tsuserver3aov'
+        self.software = 'tsuserver3'
+        self.version = 'tsuserver3dev'
         self.release = 3
         self.major_version = 1
         self.minor_version = 1
