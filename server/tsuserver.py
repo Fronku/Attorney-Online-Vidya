@@ -103,6 +103,7 @@ class TsuServer3:
         ip = transport.get_extra_info('peername')[0]
         if self.ban_manager.is_banned(self.get_ipid(ip)):
             transport.close()
+            return False
         c = self.client_manager.new_client(transport)
         if ip not in self.loaded_ips:
             self.loaded_ips[ip] = 0

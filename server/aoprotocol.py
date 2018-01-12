@@ -79,6 +79,8 @@ class AOProtocol(asyncio.Protocol):
         :param transport: the transport object
         """
         self.client = self.server.new_client(transport)
+        if self.client == false:
+            return
         self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
         self.client.send_command('decryptor', 34)  # just fantacrypt things
 
