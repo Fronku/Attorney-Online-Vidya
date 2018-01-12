@@ -36,6 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.config = None
         self.allowed_iniswaps = None
+        self.loaded_ips = {}
         self.load_config()
         self.load_iniswaps()
         self.client_manager = ClientManager(self)
@@ -100,6 +101,12 @@ class TsuServer3:
 
     def new_client(self, transport):
         c = self.client_manager.new_client(transport)
+        ip = c.get_ipreal()
+        if ip not in self.loaded_ips:
+            self.loaded_ips[ip] = 0
+        self.loaded_ips[i] += 1
+        if self.loaded_ips[i] > self.config['max_clients']:
+            c.disconnect()
         if self.rp_mode:
             c.in_rp = True
         c.server = self
