@@ -106,8 +106,8 @@ class TsuServer3:
         c = self.client_manager.new_client(transport)
         if ip not in self.loaded_ips:
             self.loaded_ips[ip] = 0
-        self.loaded_ips[i] += 1
-        if self.loaded_ips[i] > self.config['max_clients']:
+        self.loaded_ips[ip] += 1
+        if self.loaded_ips[ip] > self.config['max_clients']:
             c.disconnect()
         if self.rp_mode:
             c.in_rp = True

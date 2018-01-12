@@ -63,7 +63,7 @@ class BanManager:
     def is_banned(self, ipid):
         try:
             return self.bans[ipid]
-        except IndexError:
+        except KeyError:
             return False
 
 
