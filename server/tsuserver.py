@@ -100,8 +100,10 @@ class TsuServer3:
         return str(self.release) + '.' + str(self.major_version) + '.' + str(self.minor_version)
 
     def new_client(self, transport):
-        c = self.client_manager.new_client(transport)
         ip = c.get_ipreal()
+        if self.ban_manager.is_banned(self.get_ipid(ip)):
+            transport.close()
+        c = self.client_manager.new_client(transport)
         if ip not in self.loaded_ips:
             self.loaded_ips[ip] = 0
         self.loaded_ips[i] += 1
