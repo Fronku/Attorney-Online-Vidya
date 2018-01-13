@@ -174,7 +174,7 @@ def ooc_cmd_pos(client, arg):
 def ooc_cmd_help(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
-    help_url = 'https://github.com/Fronku/Attorney-Online-Vidya/'
+    help_url = 'https://github.com/Fronku/Attorney-Online-Vidya'
     help_msg = 'Available commands, source code and issues can be found here: {}'.format(help_url)
     client.send_host_message(help_msg)
         
@@ -221,10 +221,15 @@ def ooc_cmd_ban(client, arg):
         banlist = client.server.client_manager.get_targets(client, TargetType.HDID,''.join(args[1:]).strip(), False)
     elif args[0].lower() == 'id':
         banlist = client.server.client_manager.get_targets(client, TargetType.ID, ''.join(args[1:]).strip(), False)
-    if banlist:
-        ban = banlist[0].ipid
+    if banlist or args[0].lower() == 'ip':
         try:
-            client.server.ban_manager.add_ban(ban)
+            ban = banlist[0].ipid
+            actual = ban
+        except IndexError:
+            ban = ''.join(args[1:]).strip()
+            actual = client.server.get_ipid(ban)
+        try:
+            client.server.ban_manager.add_ban(actual)
         except ServerError:
             raise
         for c in banlist:
@@ -239,9 +244,10 @@ def ooc_cmd_unban(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     try:
-        client.server.ban_manager.remove_ban(int(arg.strip()))
-    except:
-        raise ClientError('Must be IP or IPID')
+        client.server.ban_manager.remove_ban(client, arg)
+    except Exception as E:
+        print(E)
+        raise ClientError('Must be IP or IPID, or client already unbanned.')
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
 
