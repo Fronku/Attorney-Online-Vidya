@@ -137,14 +137,17 @@ class AOProtocol(asyncio.Protocol):
         if not self.validate_net_cmd(args, self.ArgType.STR, needs_auth=False):
             return
         self.client.hdid = args[0]
-        if not self.client.hdid in   self.client.server.hdid_list:
-            self.client.server.hdid_list[self.client.hdid] = []
         ipid = self.client.ipid
+        try:
+            self.client.server.hdid_list[self.client.hdid]
+        except KeyError:
+            self.client.server.hdid_list[self.client.hdid] = []
+            self.client.server.save_id()
         if not ipid in self.client.server.hdid_list[self.client.hdid]:
             self.client.server.hdid_list[self.client.hdid].append(ipid)
             self.client.server.save_id()
-        for ipid in self.client.server.hdid_list[self.client.hdid]:
-            if self.server.ban_manager.is_banned(ipid):
+        for ip_id in self.client.server.hdid_list[self.client.hdid]:
+            if self.server.ban_manager.is_banned(ip_id):
                 self.client.disconnect()
                 return
         logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
