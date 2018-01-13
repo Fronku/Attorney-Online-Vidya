@@ -940,10 +940,7 @@ def ooc_cmd_judgelog(client, arg):
 def ooc_cmd_togglemodcall(client, arg):
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
-    try:
-        client.muted_modcall = not client.muted_modcall
-    except Exception as a:
-        print(a)
+    client.muted_modcall = not client.muted_modcall
     glob_stat = 'on'
     if client.muted_modcall:
         glob_stat = 'off'
