@@ -555,7 +555,9 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_host_message("You have been muted by a moderator")
             return
-
+        if self.client.muted_modcall:
+            self.client.send_host_message("You have muted modcalls")
+            return
         if not self.client.can_call_mod():
             self.client.send_host_message("You must wait 30 seconds between mod calls.")
             return

@@ -936,3 +936,15 @@ def ooc_cmd_judgelog(client, arg):
     for j in area.judgelog:
         msg += '\r\n{}'.format(j)
     client.send_host_message(msg)
+
+def ooc_cmd_togglemodcall(client, arg):
+    if len(arg) != 0:
+        raise ArgumentError("This command doesn't take any arguments")
+    try:
+        client.muted_modcall = not client.muted_modcall
+    except Exception as a:
+        print(a)
+    glob_stat = 'on'
+    if client.muted_modcall:
+        glob_stat = 'off'
+    client.send_host_message('Modcalls turned {}.'.format(glob_stat))
