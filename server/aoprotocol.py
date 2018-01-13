@@ -75,6 +75,7 @@ class AOProtocol(asyncio.Protocol):
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
             except KeyError:
+                return        
 
     def connection_made(self, transport):
         """ Called upon a new client connecting
