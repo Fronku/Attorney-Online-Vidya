@@ -71,10 +71,10 @@ class TsuServer3:
         bound_ip = '0.0.0.0'
         if self.config['local']:
             bound_ip = '127.0.0.1'
-
+        
         ao_server_crt = loop.create_server(lambda: AOProtocol(self), bound_ip, self.config['port'])
         ao_server = loop.run_until_complete(ao_server_crt)
-
+        
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
             asyncio.ensure_future(self.district_client.connect(), loop=loop)
@@ -89,9 +89,7 @@ class TsuServer3:
             loop.run_forever()
         except KeyboardInterrupt:
             pass
-
         logger.log_debug('Server shutting down.')
-
         ao_server.close()
         loop.run_until_complete(ao_server.wait_closed())
         loop.close()
@@ -101,15 +99,10 @@ class TsuServer3:
 
     def new_client(self, transport):
         ip = transport.get_extra_info('peername')[0]
-        if self.ban_manager.is_banned(self.get_ipid(ip)):
-            transport.close()
-            return False
         c = self.client_manager.new_client(transport)
         if ip not in self.loaded_ips:
             self.loaded_ips[ip] = 0
         self.loaded_ips[ip] += 1
-        if self.loaded_ips[ip] > self.config['max_clients']:
-            c.disconnect()
         if self.rp_mode:
             c.in_rp = True
         c.server = self
@@ -120,6 +113,7 @@ class TsuServer3:
     def remove_client(self, client):
         client.area.remove_client(client)
         self.client_manager.remove_client(client)
+        
 
     def get_player_count(self):
         return len(self.client_manager.clients)

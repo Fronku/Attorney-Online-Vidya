@@ -56,6 +56,10 @@ class AOProtocol(asyncio.Protocol):
         self.buffer += data.decode('utf-8', 'ignore')
         if len(self.buffer) > 8192:
             self.client.disconnect()
+        if not self.client.is_checked and (self.client.server.ban_manager.is_banned(self.client.server.get_ipid(self.client.get_ipreal())) or self.client.server.loaded_ips[self.client.get_ipreal()] > self.client.server.config['max_clients']):
+            self.client.disconnect()
+        else:
+            self.client.is_checked = True
         for msg in self.get_messages():
             if len(msg) < 2:
                 self.client.disconnect()
@@ -71,7 +75,6 @@ class AOProtocol(asyncio.Protocol):
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
             except KeyError:
-                return
 
     def connection_made(self, transport):
         """ Called upon a new client connecting
@@ -79,10 +82,8 @@ class AOProtocol(asyncio.Protocol):
         :param transport: the transport object
         """
         self.client = self.server.new_client(transport)
-        if self.client == false:
-            return
         self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
-        self.client.send_command('decryptor', 34)  # just fantacrypt things
+        self.client.send_command('decryptor', 34)  # just fantacrypt things        
 
     def connection_lost(self, exc):
         """ User disconnected
@@ -91,7 +92,7 @@ class AOProtocol(asyncio.Protocol):
         """
         self.server.remove_client(self.client)
         self.ping_timeout.cancel()
-
+        
     def get_messages(self):
         """ Parses out full messages from the buffer.
 
