@@ -48,6 +48,7 @@ class ClientManager:
             self.gimp = False
             self.muted_global = False
             self.muted_adverts = False
+            self.muted_modcall = False
             self.is_muted = False
             self.is_ooc_muted = False
             self.pm_mute = False
