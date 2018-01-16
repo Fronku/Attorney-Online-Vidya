@@ -61,7 +61,7 @@ class BanManager:
         del self.bans[ip]
         self.write_banlist()
 
-    def is_banned(self, ipid):
+    def is_banned(self, ipid):        
         try:
             return self.bans[ipid]
         except KeyError:

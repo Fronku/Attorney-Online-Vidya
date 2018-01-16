@@ -28,5 +28,6 @@ music_change_floodguard:
   interval_length: 20
   mute_length: 180
 
+max_clients: 99
 poll_slots: 30
 server_number: 4444

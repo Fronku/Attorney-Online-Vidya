@@ -30,6 +30,7 @@ import random
 class ClientManager:
     class Client:
         def __init__(self, server, transport, user_id, ipid):
+            self.is_checked = False
             self.transport = transport
             self.hdid = ''
             self.pm_mute = False
@@ -86,6 +87,7 @@ class ClientManager:
             self.send_host_message('=== MOTD ===\r\n{}\r\n============='.format(self.server.config['motd']))
 
         def disconnect(self):
+            self.server.loaded_ips[self.get_ipreal()] -= 1
             self.transport.close()
 
         def change_character(self, char_id, force=False):
