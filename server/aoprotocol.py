@@ -390,13 +390,11 @@ class AOProtocol(asyncio.Protocol):
             return
         if self.client.voting == 2:
             polls = self.client.server.serverpoll_manager.show_poll_list()
-            if args[1].lower() == 'yes':
-                self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], 'yes', self.client)
-            elif args[1].lower() == 'no':
-                print(args[1])
-                self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], 'no', self.client)
+            choices = self.client.server.serverpoll_manager.get_poll_choices(polls[self.client.voting_at])
+            if args[1].lower() in [x.lower() for x in choices]:
+                self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], args[1].lower(), self.client)
             else:
-                self.client.send_host_message('Input Error, expected input \'yes\' or \'no\', voting cancelled.')
+                self.client.send_host_message('Input Error, expected input is one of the choices, voting cancelled.')
             self.client.voting_at = 0
             self.client.voting = 0
             return
@@ -412,10 +410,11 @@ class AOProtocol(asyncio.Protocol):
                 self.client.voting_at = num - 1
                 polls = self.client.server.serverpoll_manager.show_poll_list()
                 polldetail = self.client.server.serverpoll_manager.returndetail(polls[self.client.voting_at])
+                choices = self.client.server.serverpoll_manager.get_poll_choices(polls[self.client.voting_at])
                 if polldetail is None:
-                    self.client.send_host_message('Now voting for {}.) {}.\n Enter "Yes" or "No".'.format(num ,polls[self.client.voting_at]))
+                    self.client.send_host_message('Now voting for {}.) {}.\n Choices: \n{}.'.format(num ,polls[self.client.voting_at], "\n ".join(choices)))
                 else:
-                    self.client.send_host_message('Now voting for {}.) {}.\n Details: {}.\n Enter "Yes" or "No".'.format(num ,polls[self.client.voting_at], polldetail))
+                    self.client.send_host_message('Now voting for {}.) {}.\n Details: {}.\n Choices: \n{}.'.format(num ,polls[self.client.voting_at], polldetail, "\n ".join(choices)))
             elif num == 0:
                 self.client.voting = 0
                 self.client.send_host_message('Voting cancelled.')

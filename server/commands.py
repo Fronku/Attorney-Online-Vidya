@@ -945,3 +945,56 @@ def ooc_cmd_togglemodcall(client, arg):
     if client.muted_modcall:
         glob_stat = 'off'
     client.send_host_message('Modcalls turned {}.'.format(glob_stat))
+
+def ooc_cmd_pollchoiceclear(client, arg):
+    if client.is_mod:
+        client.server.serverpoll_manager.clear_poll_choice(arg)
+        client.send_host_message('Poll {} choices cleared.'.format(arg))
+    else:
+        return
+
+def ooc_cmd_pollchoiceremove(client, arg):
+    if client.is_mod:
+        args = arg.split()
+        ooc_name = 1
+        for word in args:
+            if word.lower().endswith(':'):
+                break
+            else:
+                ooc_name += 1
+        if ooc_name == len(args) + 1:
+            raise ArgumentError('Invalid syntax. Add \':\' in the end of target.')
+        poll = ' '.join(args[:ooc_name])
+        poll = poll[:len(poll) - 1]
+        choice = ' '.join(args[ooc_name:])
+        if not choice:
+            raise ArgumentError('Not enough arguments. Use /pollchoiceremove <poll>: <choice to be removed>.')
+        x = client.server.serverpoll_manager.remove_poll_choice(client, poll, choice)
+        if x is None:
+            return
+        client.send_host_message('Removed {} as a choice in poll {}. Current choices:\n{} '.format(choice, poll, "\n".join(x)))
+    else:
+        return
+
+def ooc_cmd_pollchoiceadd(client, arg):
+    if client.is_mod:
+        args = arg.split()
+        ooc_name = 1
+        for word in args:
+            if word.lower().endswith(':'):
+                break
+            else:
+                ooc_name += 1
+        if ooc_name == len(args) + 1:
+            raise ArgumentError('Invalid syntax. Add \':\' in the end of target.')
+        poll = ' '.join(args[:ooc_name])
+        poll = poll[:len(poll) - 1]
+        choice = ' '.join(args[ooc_name:])
+        if not choice:
+            raise ArgumentError('Not enough arguments. Use /pollchoiceremove <poll>: <choice to be removed>.')
+        x = client.server.serverpoll_manager.add_poll_choice(client, poll, choice)
+        if x is None:
+            return
+        client.send_host_message('Added {} as a choice in poll {}. Current choices:\n{} '.format(choice, poll, "\n".join(x)))
+    else:
+        return
