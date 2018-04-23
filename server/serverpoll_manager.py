@@ -211,11 +211,10 @@ class ServerpollManager:
                 output = ('{} \'{}\''.format("".join(poll_selected), value))
                 stream = open('storage/poll/{}.yaml'.format(output), 'r')
                 stream2 = yaml.load(stream)
-                choices = stream2['choices']
                 if add.lower() in [x.lower() for x in stream2['choices']]:
                     client.send_host_message('Item already a choice.')
                     return
-                stream2['choices'].append(str(add))
+                stream2['choices'].append(str(add.lower()))
                 stream2['votes'][add] = 0
                 with open('storage/poll/{}.yaml'.format(output), 'w') as votelist_file:
                     yaml.dump(stream2, votelist_file, default_flow_style=False)
@@ -275,8 +274,8 @@ class ServerpollManager:
                         poll[0], vote, client.name, client.get_char_name(), client.area.name, client.ipid, client.hdid, tmp))
                 client.send_host_message('You have chosen this choice already.')
             else:
-                # If they aren't a filthy rigger, they should get to this point.
-                if vote in [x.lower() for x in self.vote['choices']]:
+                # If they aren't a filthy rigger, they should get to this point
+                if vote.lower() in [x.lower() for x in self.vote['choices']]:
                     self.vote['votes'][vote.lower()] += 1
                 tmp = time.strftime('%y-%m-%d %H:%M:%S')
                 self.vote['log'] += ([tmp, client.ipid, client.hdid, vote, "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
@@ -295,10 +294,8 @@ class ServerpollManager:
             raise ServerError('The specified poll does not have a file associated with it.')
         except IndexError:
             # todo: A bit redundant. There's probably a better way.
-            if vote == "yes":
-                self.vote['voteyes'] += 1
-            elif vote == "no":
-                self.vote['voteno'] += 1
+            if vote.lower() in [x.lower() for x in self.vote['choices']]:
+                self.vote['votes'][vote.lower()] += 1
             tmp = time.strftime('%y-%m-%d %H:%M:%S')
             self.vote['log'] += ([tmp, client.ipid, client.hdid, vote,
                                   "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
