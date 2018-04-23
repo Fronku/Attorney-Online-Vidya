@@ -391,12 +391,28 @@ class AOProtocol(asyncio.Protocol):
         if self.client.voting == 2:
             polls = self.client.server.serverpoll_manager.show_poll_list()
             choices = self.client.server.serverpoll_manager.get_poll_choices(polls[self.client.voting_at])
-            if args[1].lower() in [x.lower() for x in choices]:
-                self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], args[1].lower(), self.client)
+            multi = self.client.server.serverpoll_manager.returnmulti(polls[self.client.voting_at])
+            if multi:
+                if args[1].lower() in [x.lower() for x in choices]:
+                    self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], args[1].lower(),
+                                                                   self.client)
+                    self.client.send_host_message(
+                        'Voted {}. Choose another item to vote or type \'exit\' to stop voting.'.args[1])
+                elif args[1].lower() == "exit":
+                    self.client.send_host_message(
+                        'Thank you for voting. God bless and have a nice day.')
+                    self.client.voting_at = 0
+                    self.client.voting = 0
+                else:
+                    self.client.send_host_message(
+                        'Input Error, expected input is one of the choices, type "exit" to exit voting.')
             else:
-                self.client.send_host_message('Input Error, expected input is one of the choices, voting cancelled.')
-            self.client.voting_at = 0
-            self.client.voting = 0
+                if args[1].lower() in [x.lower() for x in choices]:
+                    self.client.server.serverpoll_manager.add_vote(polls[self.client.voting_at], args[1].lower(), self.client)
+                else:
+                    self.client.send_host_message('Input Error, expected input is one of the choices, voting cancelled.')
+                self.client.voting_at = 0
+                self.client.voting = 0
             return
         if self.client.voting == 1:
             num = -1
@@ -412,9 +428,9 @@ class AOProtocol(asyncio.Protocol):
                 polldetail = self.client.server.serverpoll_manager.returndetail(polls[self.client.voting_at])
                 choices = self.client.server.serverpoll_manager.get_poll_choices(polls[self.client.voting_at])
                 if polldetail is None:
-                    self.client.send_host_message('Now voting for {}.) {}.\n Choices: \n{}.'.format(num ,polls[self.client.voting_at], "\n ".join(choices)))
+                    self.client.send_host_message('Now voting for {}.) {}.\n Choices: \n{}\nType \'exit\' to cancel voting.'.format(num ,polls[self.client.voting_at], "\n ".join(choices)))
                 else:
-                    self.client.send_host_message('Now voting for {}.) {}.\n Details: {}.\n Choices: \n{}.'.format(num ,polls[self.client.voting_at], polldetail, "\n ".join(choices)))
+                    self.client.send_host_message('Now voting for {}.) {}.\n Details: {}.\n Choices: \n{}. Type \'exit\' to cancel voting'.format(num ,polls[self.client.voting_at], polldetail, "\n ".join(choices)))
             elif num == 0:
                 self.client.voting = 0
                 self.client.send_host_message('Voting cancelled.')

@@ -117,6 +117,13 @@ class ServerpollManager:
                 hold = yaml.load(stream)
                 return hold['polldetail']
 
+    def returnmulti(self, value):
+        for i in self.poll_list:
+            if i[0].lower() == value.lower():
+                stream = open('storage/poll/{} \'{}\'.yaml'.format(i[1], i[0]), 'r')
+                hold = yaml.load(stream)
+                return hold['multivote']
+
     def poll_exists(self, value):
         if [i for i in self.poll_list if i[0] == "{}".format(value)]:
             return True
@@ -214,8 +221,8 @@ class ServerpollManager:
                 if add.lower() in [x.lower() for x in stream2['choices']]:
                     client.send_host_message('Item already a choice.')
                     return
-                stream2['choices'].append(str(add.lower()))
-                stream2['votes'][add] = 0
+                stream2['choices'].append(str(add))
+                stream2['votes'][add.lower()] = 0
                 with open('storage/poll/{}.yaml'.format(output), 'w') as votelist_file:
                     yaml.dump(stream2, votelist_file, default_flow_style=False)
                 return stream2['choices']
