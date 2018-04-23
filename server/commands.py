@@ -998,3 +998,13 @@ def ooc_cmd_pollchoiceadd(client, arg):
         client.send_host_message('Added {} as a choice in poll {}. Current choices:\n{} '.format(choice, poll, "\n".join(x)))
     else:
         return
+
+def ooc_cmd_makepollmulti(client, arg):
+    if client.is_mod:
+        x = client.server.serverpoll_manager.make_multipoll(arg)
+        if x:
+            client.send_host_message('Poll {} made multipoll.'.format(arg))
+        else:
+            client.send_host_message('Poll {} made single poll.'.format(arg))
+    else:
+        return

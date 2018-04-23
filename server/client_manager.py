@@ -52,7 +52,7 @@ class ClientManager:
             self.muted_modcall = False
             self.is_muted = False
             self.is_ooc_muted = False
-            self.pm_mute = False    
+            self.pm_mute = False
             self.mod_call_time = 0
             self.in_rp = False
             self.ipid = ipid

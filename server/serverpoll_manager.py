@@ -69,6 +69,7 @@ class ServerpollManager:
                 newfile = {
                     'name': value,
                     'polldetail': None,
+                    'multivote': False,
                     'choices': ["Yes", "No"],
                     'votes': {"yes": 0, "no": 0},
                     'created': tmp,
@@ -168,7 +169,6 @@ class ServerpollManager:
                 output = ('{} \'{}\''.format("".join(poll_selected), value))
                 stream = open('storage/poll/{}.yaml'.format(output), 'r')
                 stream2 = yaml.load(stream)
-                choices = stream2['choices']
                 stream2['choices'] = []
                 stream2['votes']  = {}
                 with open('storage/poll/{}.yaml'.format(output), 'w') as votelist_file:
@@ -227,6 +227,24 @@ class ServerpollManager:
         except IndexError:
             return
 
+    def make_multipoll(self, value):
+        try:
+            if [i for i in self.poll_list if i[0] == "{}".format(value)]:
+                poll_selected = [i[1] for i in self.poll_list if i[0] == "{}".format(value)]
+                output = ('{} \'{}\''.format("".join(poll_selected), value))
+                stream = open('storage/poll/{}.yaml'.format(output), 'r')
+                stream2 = yaml.load(stream)
+                stream2['multivote'] = not stream2['multivote']
+                with open('storage/poll/{}.yaml'.format(output), 'w') as votelist_file:
+                    yaml.dump(stream2, votelist_file, default_flow_style=False)
+                return stream2['choices']
+            else:
+                return None
+        except FileNotFoundError:
+            raise ServerError('The specified poll has no file associated with it.')
+        except IndexError:
+            return
+
     def add_vote(self, value, vote, client):
         tmp = time.strftime('%y-%m-%d %H:%M:%S')
         try:
@@ -241,20 +259,27 @@ class ServerpollManager:
             stream = open('storage/poll/{} \'{}\'.yaml'.format(poll_voting[1], poll_voting[0]), 'r')
             self.vote = yaml.load(stream)
             log = self.vote['log']
-            if [item for item in log if item[1] == client.ipid] or [item for item in log if item[2] == client.hdid]:
+            if ([item for item in log if item[1] == client.ipid] or [item for item in log if item[2] == client.hdid]) and (not self.vote['multivote']):
                 # Now to log their failed vote
-                self.vote['log'] += (['FAILED VOTE', tmp, client.ipid, client.hdid, "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
+                self.vote['log'] += (['FAILED VOTE',  tmp, client.ipid, client.hdid, vote, "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
                 self.write_votelist(poll_voting)
                 logger.log_serverpoll(
                     'Vote in poll {} \'{}\' failed by {} ({}) in {}, with IP {} and HDID {}, at {}. Reason: Already voted.'.format(
                         poll[0], vote, client.name, client.get_char_name(), client.area.name, client.ipid, client.hdid, tmp))
                 client.send_host_message('You have already voted in this poll.')
+            elif [item for item in log if ((item[1] == client.ipid or item[2] == client.hdid) and (item[3].lower() == vote.lower()))]:
+                self.vote['log'] += (['FAILED VOTE',  tmp, client.ipid, client.hdid, vote, "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
+                self.write_votelist(poll_voting)
+                logger.log_serverpoll(
+                    'Vote in poll {} \'{}\' failed by {} ({}) in {}, with IP {} and HDID {}, at {}. Reason: Already voted.'.format(
+                        poll[0], vote, client.name, client.get_char_name(), client.area.name, client.ipid, client.hdid, tmp))
+                client.send_host_message('You have chosen this choice already.')
             else:
                 # If they aren't a filthy rigger, they should get to this point.
                 if vote in [x.lower() for x in self.vote['choices']]:
                     self.vote['votes'][vote.lower()] += 1
                 tmp = time.strftime('%y-%m-%d %H:%M:%S')
-                self.vote['log'] += ([tmp, client.ipid, client.hdid, "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
+                self.vote['log'] += ([tmp, client.ipid, client.hdid, vote, "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
                 self.write_votelist(poll_voting)
                 logger.log_serverpoll(
                     'Vote in poll {} \'{}\' added succesfully by {} ({}) in {}, with IP {} and HDID {}, at {}.'.format(
@@ -275,7 +300,7 @@ class ServerpollManager:
             elif vote == "no":
                 self.vote['voteno'] += 1
             tmp = time.strftime('%y-%m-%d %H:%M:%S')
-            self.vote['log'] += ([tmp, client.ipid, client.hdid,
+            self.vote['log'] += ([tmp, client.ipid, client.hdid, vote,
                                   "{} ({}) at area {}".format(client.name, client.get_char_name(), client.area.name)],)
             self.write_votelist(poll_voting)
             logger.log_serverpoll('Vote \'{}\' added successfully by {}'.format(vote, client.get_ip()))
