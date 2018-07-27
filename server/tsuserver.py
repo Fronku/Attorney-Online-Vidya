@@ -63,7 +63,7 @@ class TsuServer3:
         self.district_client = None
         self.ms_client = None
         self.rp_mode = False
-        logger.setup_logger(debug=self.config['debug'])
+        logger.setup_logger(debug=self.config['debug'], log_size=self.config['log_size'], log_backups=self.config['log_backups'])
 
     def start(self):
         loop = asyncio.get_event_loop()
@@ -124,6 +124,12 @@ class TsuServer3:
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
         if 'music_change_floodguard' not in self.config:
             self.config['music_change_floodguard'] = {'times_per_interval': 1,  'interval_length': 0, 'mute_length': 0}
+        if 'wtce_floodguard' not in self.config:
+            self.config['wtce_floodguard'] = {'times_per_interval': 1, 'interval_length': 0, 'mute_length': 0}
+        if 'log_size' not in self.config:
+            self.config['log_size'] = 1048576
+        if 'log_backups' not in self.config:
+            self.config['log_backups'] = 5
 
     def load_ids(self):
         self.hdid_list = {}

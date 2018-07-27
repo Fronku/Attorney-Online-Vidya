@@ -50,6 +50,15 @@ class AreaManager:
             self.evidence_mod = evidence_mod
             self.locking_allowed = locking_allowed
             self.owned = False
+            self.cards = dict()
+
+            """
+            #debug
+            self.evidence_list.append(Evidence("WOW", "desc", "1.png"))
+            self.evidence_list.append(Evidence("wewz", "desc2", "2.png"))
+            self.evidence_list.append(Evidence("weeeeeew", "desc3", "3.png"))
+            """
+            
             self.is_locked = False
 
         def new_client(self, client):
@@ -107,7 +116,10 @@ class AreaManager:
                                                                         lambda: self.play_music(name, -1, length))
 
 
-        def can_send_message(self):
+        def can_send_message(self, client):
+            if self.is_locked and not client.is_mod and not client.ipid in self.invite_list:
+                client.send_host_message('This is a locked area - ask the CM to speak.')
+                return False
             return (time.time() * 1000.0 - self.next_message_time) > 0
 
         def change_hp(self, side, val):
@@ -124,10 +136,6 @@ class AreaManager:
         def change_background(self, bg):
             if bg.lower() not in (name.lower() for name in self.server.backgrounds):
                 raise AreaError('Invalid background name.')
-            self.background = bg
-            self.send_command('BN', self.background)
-
-        def change_background_mod(self, bg):
             self.background = bg
             self.send_command('BN', self.background)
 

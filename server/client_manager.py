@@ -20,10 +20,10 @@ from server import logger
 from server.exceptions import ClientError, AreaError
 from enum import Enum
 from server.constants import TargetType
+from heapq import heappop, heappush
 
 import time
 import re
-import random
 
 
 
@@ -42,6 +42,7 @@ class ClientManager:
             self.fake_name = ''
             self.is_mod = False
             self.is_dj = True
+            self.can_wtce = True
             self.pos = ''
             self.is_cm = False
             self.evi_list = []
@@ -59,14 +60,21 @@ class ClientManager:
             self.voting = 0
             self.voting_at = 0
             self.is_checked = False
-
-            #music flood-guard stuff
+            self.websocket = None
+            
+            #flood-guard stuff
             self.mus_counter = 0
-            self.mute_time = 0
+            self.mus_mute_time = 0
             self.mus_change_time = [x * self.server.config['music_change_floodguard']['interval_length'] for x in range(self.server.config['music_change_floodguard']['times_per_interval'])]
+            self.wtce_counter = 0
+            self.wtce_mute_time = 0
+            self.wtce_time = [x * self.server.config['wtce_floodguard']['interval_length'] for x in range(self.server.config['wtce_floodguard']['times_per_interval'])]
 
         def send_raw_message(self, msg):
-            self.transport.write(msg.encode('utf-8'))
+            if self.websocket:
+                self.websocket.send_text(msg.encode('utf-8'))
+            else:
+                self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
             if args:
@@ -87,8 +95,22 @@ class ClientManager:
         def send_motd(self):
             self.send_host_message('=== MOTD ===\r\n{}\r\n============='.format(self.server.config['motd']))
 
+        def send_player_count(self):
+            self.send_host_message('{}/{} players online.'.format(
+                self.server.get_player_count(),
+                self.server.config['playerlimit']))
+
+        def is_valid_name(self, name):
+            name_ws = name.replace(' ', '')
+            if not name_ws or name_ws.isdigit():
+                return False
+            for client in self.server.client_manager.clients:
+                print(client.name == name)
+                if client.name == name:
+                    return False
+            return True
+            
         def disconnect(self):
-            self.server.loaded_ips[self.get_ipreal()] -= 1
             self.transport.close()
 
         def change_character(self, char_id, force=False):
@@ -111,21 +133,36 @@ class ClientManager:
         def change_music_cd(self):
             if self.is_mod or self.is_cm:
                 return 0
-            if self.mute_time:
-                if time.time() - self.mute_time < self.server.config['music_change_floodguard']['mute_length']:
-                    return self.server.config['music_change_floodguard']['mute_length'] - (time.time() - self.mute_time)
+            if self.mus_mute_time:
+                if time.time() - self.mus_mute_time < self.server.config['music_change_floodguard']['mute_length']:
+                    return self.server.config['music_change_floodguard']['mute_length'] - (time.time() - self.mus_mute_time)
                 else:
-                    self.mute_time = 0
+                    self.mus_mute_time = 0
             times_per_interval = self.server.config['music_change_floodguard']['times_per_interval']
             interval_length = self.server.config['music_change_floodguard']['interval_length']
             if time.time() - self.mus_change_time[(self.mus_counter - times_per_interval + 1) % times_per_interval] < interval_length:
-                self.mute_time = time.time()
+                self.mus_mute_time = time.time()
                 return self.server.config['music_change_floodguard']['mute_length']
             self.mus_counter = (self.mus_counter + 1) % times_per_interval
             self.mus_change_time[self.mus_counter] = time.time()
             return 0
-                
-                
+
+        def wtce_mute(self):
+            if self.is_mod or self.is_cm:
+                return 0
+            if self.wtce_mute_time:
+                if time.time() - self.wtce_mute_time < self.server.config['wtce_floodguard']['mute_length']:
+                    return self.server.config['wtce_floodguard']['mute_length'] - (time.time() - self.wtce_mute_time)
+                else:
+                    self.wtce_mute_time = 0
+            times_per_interval = self.server.config['wtce_floodguard']['times_per_interval']
+            interval_length = self.server.config['wtce_floodguard']['interval_length']
+            if time.time() - self.wtce_time[(self.wtce_counter - times_per_interval + 1) % times_per_interval] < interval_length:
+                self.wtce_mute_time = time.time()
+                return self.server.config['music_change_floodguard']['mute_length']
+            self.wtce_counter = (self.wtce_counter + 1) % times_per_interval
+            self.wtce_time[self.wtce_counter] = time.time()
+            return 0
 
         def reload_character(self):
             try:
@@ -135,9 +172,10 @@ class ClientManager:
 
         def change_area(self, area):
             if self.area == area:
-                raise ClientError('User is already in target area.')
-            if area.is_locked and not self.is_mod and not (self.ipid in area.invite_list):
-                raise ClientError('That area is locked!')
+                raise ClientError('User already in specified area.')
+            if area.is_locked and not self.is_mod and not self.ipid in area.invite_list:
+                self.send_host_message('This area is locked - you will be unable to send messages ICly.')
+                #raise ClientError("That area is locked!")
             old_area = self.area
             if not area.is_char_available(self.char_id):
                 try:
@@ -156,9 +194,6 @@ class ClientManager:
             logger.log_server(
                 '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
                                                                    self.area.name, self.area.id), self)
-            #logger.log_rp(
-            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-            #                                                       self.area.name, self.area.id), self)
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
@@ -168,12 +203,7 @@ class ClientManager:
             msg = '=== Areas ==='
             lock = {True: '[LOCKED]', False: ''}
             for i, area in enumerate(self.server.area_manager.areas):
-                owner = ''
-                if area.owned:
-                    for client in [x for x in area.clients if x.is_cm]:
-                        owner = '[AREA FAG: {}]'.format(client.get_char_name())
-                        break
-                msg += '\r\nArea {}: {} (users: {}) [{}]{}{}'.format(i, area.name, len(area.clients), area.status, owner, lock[area.is_locked])
+                msg += '\r\nArea {}: {} (users: {}) [{}]'.format(i, area.name, len(area.clients), area.status)
                 if self.area == area:
                     msg += ' [*]'
             self.send_host_message(msg)
@@ -201,13 +231,16 @@ class ClientManager:
             info = ''
             if area_id == -1:
                 # all areas info
-                info = '== Area List =='
+                cnt = 0
+                info = '\n== Area List =='
                 for i in range(len(self.server.area_manager.areas)):
                     if len(self.server.area_manager.areas[i].clients) > 0:
+                        cnt += len(self.server.area_manager.areas[i].clients)
                         info += '\r\n{}'.format(self.get_area_info(i, mods))
+                info = 'Current online: {}'.format(cnt) + info
             else:
                 try:
-                    info = self.get_area_info(area_id, mods)
+                    info = 'People in this area: {}\n'.format(len(self.server.area_manager.areas[area_id].clients)) + self.get_area_info(area_id, mods)
                 except AreaError:
                     raise
             self.send_host_message(info)
@@ -244,7 +277,6 @@ class ClientManager:
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
             self.send_command('MM', 1)
-            self.send_command('OPPASS', fantacrypt.fanta_encrypt(self.server.config['guardpass']))
             self.send_command('DONE')
 
         def char_select(self):
@@ -341,27 +373,21 @@ class ClientManager:
                        '((pardon me, i might have just interrupted but is there a case going on in this area?))',
                        '((status?))']
             return random.choice(message)
-
+			
     def __init__(self, server):
         self.clients = set()
         self.server = server
-        self.cur_id = [False] * self.server.config['playerlimit']
+        self.cur_id = [i for i in range(self.server.config['playerlimit'])]
         self.clients_list = []
 
     def new_client(self, transport):
-        cur_id = 0
-        for i in range(self.server.config['playerlimit']):
-                if not self.cur_id[i]:
-                    cur_id = i
-                    break
-        c = self.Client(self.server, transport, cur_id, self.server.get_ipid(transport.get_extra_info('peername')[0]))
+        c = self.Client(self.server, transport, heappop(self.cur_id), self.server.get_ipid(transport.get_extra_info('peername')[0]))
         self.clients.add(c)
-        self.cur_id[cur_id] = True
         return c
 
             
     def remove_client(self, client):
-        self.cur_id[client.id] = False
+        heappush(self.cur_id, client.id)
         self.clients.remove(client)
 		
     def get_targets(self, client, key, value, local = False):
@@ -381,17 +407,13 @@ class ClientManager:
                     if value.lower().startswith(client.get_ipreal().lower()):
                         targets.append(client)
                 elif key == TargetType.OOC_NAME:
-                    if value == client.name and client.name:
+                    if value.lower().startswith(client.name.lower()) and client.name:
                         targets.append(client)
                 elif key == TargetType.CHAR_NAME:
-                    if value.lower() == client.get_char_name().lower():
+                    if value.lower().startswith(client.get_char_name().lower()):
                         targets.append(client)
                 elif key == TargetType.ID:
-                    try:
-                        int(value)
-                    except AttributeError:
-                        return
-                    if client.id == int(value):
+                    if client.id == value:
                         targets.append(client)
                 elif key == TargetType.IPID:
                     if client.ipid == value:
