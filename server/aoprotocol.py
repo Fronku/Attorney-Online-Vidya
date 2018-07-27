@@ -20,11 +20,12 @@ import re
 from time import localtime, strftime
 from enum import Enum
 
-from server import commands
-from server import logger
-from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.fantacrypt import fanta_decrypt
-from server.evidence import EvidenceList
+from . import commands
+from . import logger
+from .exceptions import ClientError, AreaError, ArgumentError, ServerError
+from .fantacrypt import fanta_decrypt
+from .evidence import EvidenceList
+from .websocket import WebSocket
 
 
 class AOProtocol(asyncio.Protocol):
@@ -43,6 +44,7 @@ class AOProtocol(asyncio.Protocol):
         self.client = None
         self.buffer = ''
         self.ping_timeout = None
+        self.websocket = None
 
     def data_received(self, data):
         """ Handles any data received from the network.
@@ -52,18 +54,39 @@ class AOProtocol(asyncio.Protocol):
 
         :param data: bytes of data
         """
-        # try to decode as utf-8, ignore any erroneous characters
-        self.buffer += data.decode('utf-8', 'ignore')
-        if len(self.buffer) > 8192:
-            self.client.disconnect()
-        if not self.client.is_checked and (self.client.server.ban_manager.is_banned(self.client.server.get_ipid(self.client.get_ipreal())) or self.client.server.loaded_ips[self.client.get_ipreal()] > self.client.server.config['max_clients']):
-            self.client.disconnect()
+                
+        
+        if self.websocket is None:
+            self.websocket = WebSocket(self.client, self)
+            if not self.websocket.handshake(data):
+                self.websocket = False
+            else:
+                self.client.websocket = self.websocket
+
+        buf = data
+        
+        if not self.client.is_checked and self.server.ban_manager.is_banned(self.client.ipid):
+            self.client.transport.close()
         else:
             self.client.is_checked = True
+        
+        if self.websocket:
+            buf = self.websocket.handle(data)
+
+        if buf is None:
+            buf = b''
+
+        if not isinstance(buf, str):
+            # try to decode as utf-8, ignore any erroneous characters
+            self.buffer += buf.decode('utf-8', 'ignore')
+        else:
+            self.buffer = buf
+
+        if len(self.buffer) > 8192:
+            self.client.disconnect()
         for msg in self.get_messages():
             if len(msg) < 2:
-                self.client.disconnect()
-                return
+                continue
             # general netcode structure is not great
             if msg[0] in ('#', '3', '4'):
                 if msg[0] == '#':
@@ -75,7 +98,7 @@ class AOProtocol(asyncio.Protocol):
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
             except KeyError:
-                return        
+                logger.log_debug('[INC][UNK]{}'.format(msg), self.client)
 
     def connection_made(self, transport):
         """ Called upon a new client connecting
@@ -84,7 +107,7 @@ class AOProtocol(asyncio.Protocol):
         """
         self.client = self.server.new_client(transport)
         self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
-        self.client.send_command('decryptor', 34)  # just fantacrypt things        
+        asyncio.get_event_loop().call_later(0.25, self.client.send_command, 'decryptor', 34) # just fantacrypt things)
 
     def connection_lost(self, exc):
         """ User disconnected
@@ -93,7 +116,7 @@ class AOProtocol(asyncio.Protocol):
         """
         self.server.remove_client(self.client)
         self.ping_timeout.cancel()
-        
+
     def get_messages(self):
         """ Parses out full messages from the buffer.
 
@@ -312,7 +335,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_host_message("You have been muted by a moderator")
             return
-        if not self.client.area.can_send_message():
+        if not self.client.area.can_send_message(self.client):
             return
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY, self.ArgType.STR,
                                      self.ArgType.STR,
@@ -359,6 +382,8 @@ class AOProtocol(asyncio.Protocol):
             msg = self.client.gimp_message(msg)
         if self.client.disemvowel: #If you're disemvoweled, replace string.
             msg = self.client.disemvowel_message(msg)
+			
+			
         self.client.pos = pos
         if evidence:
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
@@ -368,6 +393,7 @@ class AOProtocol(asyncio.Protocol):
                                       sfx_delay, button, self.client.evi_list[evidence], flip, ding, color)
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
+		
 
     def net_cmd_ct(self, args):
         """ OOC Message
@@ -380,14 +406,20 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR):
             return
-        if self.client.name == '' or self.client.name != args[0]:
-            self.client.name = args[0]
-        if self.client.name.isdigit():
-            self.client.send_host_message('Digit only names is not allowed.')
+        if self.client.name != args[0] and self.client.fake_name != args[0]:
+            if self.client.is_valid_name(args[0]):
+                self.client.name = args[0]
+                self.client.fake_name = args[0]
+            else:
+                self.client.fake_name = args[0]
+        if self.client.name == '':
+            self.client.send_host_message('You must insert a name with at least one letter.')
             return
-        if self.client.name.startswith(self.server.config['hostname']) or self.client.name.startswith('<dollar>G') or self.client.name.startswith('<dollar>Н'):
+        if self.client.name.startswith(self.server.config['hostname']) or self.client.name.startswith('<dollar>G'):
             self.client.send_host_message('That name is reserved!')
             return
+
+			
         if self.client.voting == 2:
             polls = self.client.server.serverpoll_manager.show_poll_list()
             choices = self.client.server.serverpoll_manager.get_poll_choices(polls[self.client.voting_at])
@@ -436,7 +468,9 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_host_message('Voting cancelled.')
             else:
                 self.client.send_host_message('Input Error, out of range/invalid poll number.\n Choose which poll to vote, enter 0 to cancel. ')
-            return
+            return			
+
+			
         if args[1].startswith('/'):
             spl = args[1][1:].split(' ', 1)
             cmd = spl[0]
@@ -480,7 +514,7 @@ class AOProtocol(asyncio.Protocol):
             if args[1] != self.client.char_id:
                 return
             if self.client.change_music_cd():
-                self.client.send_host_message('You changed song too much times. Please try again after {} seconds.'.format(int(self.client.change_music_cd())))
+                self.client.send_host_message('You changed song too many times. Please try again after {} seconds.'.format(int(self.client.change_music_cd())))
                 return
             try:
                 name, length = self.server.get_song_data(args[0])
@@ -502,12 +536,22 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_host_message("You have been muted by a moderator")
             return
+        if not self.client.can_wtce:
+            self.client.send_host_message('You were blocked from using judge signs by a moderator.')
+            return
         if not self.validate_net_cmd(args, self.ArgType.STR):
             return
-        if args[0] not in ('testimony1', 'testimony2'):
+        if args[0] == 'testimony1':
+            sign = 'WT'
+        elif args[0] == 'testimony2':
+            sign = 'CE'
+        else:
+            return
+        if self.client.wtce_mute():
+            self.client.send_host_message('You used witness testimony/cross examination signs too many times. Please try again after {} seconds.'.format(int(self.client.wtce_mute())))
             return
         self.client.area.send_command('RT', args[0])
-        self.client.area.add_to_judgelog(self.client, 'used WT/CE')
+        self.client.area.add_to_judgelog(self.client, 'used {}'.format(sign))
         logger.log_server("[{}]{} Used WT/CE".format(self.client.area.id, self.client.get_char_name()), self.client)
 
     def net_cmd_hp(self, args):
@@ -574,9 +618,11 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_host_message("You have been muted by a moderator")
             return
+			
         if self.client.muted_modcall:
             self.client.send_host_message("You have muted modcalls")
             return
+			
         if not self.client.can_call_mod():
             self.client.send_host_message("You must wait 30 seconds between mod calls.")
             return
